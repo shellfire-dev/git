@@ -43,7 +43,7 @@ git_withOutputSilencedIfQuiet()
 	local gitCommand="$2"
 	shift 2
 
-	if [ "$(core_init_verbosity)" -ge $verbosityLevel ]; then
+	if [ "$(core_init_verbosity)" -lt $verbosityLevel ]; then
 		set -- -q "$@"
 	else
 		set -- "$@"
