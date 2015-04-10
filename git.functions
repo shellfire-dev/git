@@ -41,7 +41,7 @@ git_withOutputSilencedIfQuiet()
 {
 	local verbosityLevel=$1
 	local gitCommand="$2"
-	shift 1
+	shift 2
 
 	if [ "$(core_init_verbosity)" -ge $verbosityLevel ]; then
 		set -- -q "$@"
