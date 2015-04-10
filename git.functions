@@ -1,0 +1,53 @@
+# This file is part of shellfire jsonreader. It is subject to the licence terms in the COPYRIGHT file found in the top-level directory of this distribution and at https://raw.githubusercontent.com/shellfire-dev/jsonreader/master/COPYRIGHT. No part of shellfire jsonreader, including this file, may be copied, modified, propagated, or distributed except according to the terms contained in the COPYRIGHT file.
+# Copyright © 2014-2015 The developers of shellfire jsonreader. See the COPYRIGHT file in the top-level directory of this distribution and at https://raw.githubusercontent.com/shellfire-dev/jsonreader/master/COPYRIGHT.
+
+
+core_dependency_requires '*' git
+git_mostRecentCommit()
+{
+	local gitRepositoryPath="$1"
+
+	pushd "$gitRepositoryPath"
+	
+		local commit="$(git log -n 1 --format='format:%H')"
+		
+	popd
+	
+	printf '%s' "$commit"
+}
+
+core_dependency_requires '*' git
+git_commitToTagOrCommit()
+{
+	local gitRepositoryPath="$1"
+	local commit="$2"
+	
+	pushd "$gitRepositoryPath"
+		set +e
+		local tag="$(git describe --tags --exact-match "$commit" 2>/dev/null)"
+		local result=$?
+		set -e
+	popd
+	
+	if [ $result -eq 0 ]; then
+		printf '%s' "$tag"
+		return 0
+	fi
+	printf '%s' "$commit"
+}
+
+core_dependency_requires '*' git
+git_withOutputSilencedIfQuiet()
+{
+	local verbosityLevel=$1
+	local gitCommand="$2"
+	shift 1
+
+	if [ "$(core_init_verbosity)" -ge $verbosityLevel ]; then
+		set -- -q "$@"
+	else
+		set -- "$@"
+	fi
+	
+	git "$gitCommand" "$@"
+}
