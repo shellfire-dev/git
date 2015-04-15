@@ -25,15 +25,14 @@ git_commitToTagOrCommit()
 	pushd "$gitRepositoryPath"
 		set +e
 		local tag="$(git describe --tags --exact-match "$commit" 2>/dev/null)"
-		local result=$?
 		set -e
 	popd
 	
-	if [ $result -eq 0 ]; then
+	if [ -n "$tag" ]; then
 		printf '%s' "$tag"
-		return 0
+	else
+		printf '%s' "$commit"
 	fi
-	printf '%s' "$commit"
 }
 
 core_dependency_requires '*' git
