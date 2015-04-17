@@ -1,51 +1,6 @@
-# This file is part of shellfire jsonreader. It is subject to the licence terms in the COPYRIGHT file found in the top-level directory of this distribution and at https://raw.githubusercontent.com/shellfire-dev/jsonreader/master/COPYRIGHT. No part of shellfire jsonreader, including this file, may be copied, modified, propagated, or distributed except according to the terms contained in the COPYRIGHT file.
-# Copyright © 2014-2015 The developers of shellfire jsonreader. See the COPYRIGHT file in the top-level directory of this distribution and at https://raw.githubusercontent.com/shellfire-dev/jsonreader/master/COPYRIGHT.
+# This file is part of shellfire git. It is subject to the licence terms in the COPYRIGHT file found in the top-level directory of this distribution and at https://raw.githubusercontent.com/shellfire-dev/git/master/COPYRIGHT. No part of shellfire git, including this file, may be copied, modified, propagated, or distributed except according to the terms contained in the COPYRIGHT file.
+# Copyright © 2014-2015 The developers of shellfire git. See the COPYRIGHT file in the top-level directory of this distribution and at https://raw.githubusercontent.com/shellfire-dev/git/master/COPYRIGHT.
 
-
-core_dependency_requires '*' git
-git_mostRecentCommit()
-{
-	local repositoryPath="$1"
-
-	pushd "$repositoryPath"
-	
-		local commit="$(git_mostRecent '%H')"
-		
-	popd
-	
-	printf '%s' "$commit"
-}
-
-git_mostRecent()
-{
-	local repositoryPath="$1"
-	local format="$2"
-
-	pushd "$repositoryPath"
-	
-		git log -n 1 --format="format:$format"
-	
-	popd
-}
-
-core_dependency_requires '*' git
-git_commitToTagOrCommit()
-{
-	local repositoryPath="$1"
-	local commit="$2"
-	
-	pushd "$repositoryPath"
-		set +e
-		local tag="$(git describe --tags --exact-match "$commit" 2>/dev/null)"
-		set -e
-	popd
-	
-	if [ -n "$tag" ]; then
-		printf '%s' "$tag"
-	else
-		printf '%s' "$commit"
-	fi
-}
 
 core_dependency_requires '*' git
 git_withOutputSilencedIfQuiet()
@@ -61,4 +16,360 @@ git_withOutputSilencedIfQuiet()
 	fi
 	
 	git "$gitCommand" "$@"
+}
+
+git_inRepository()
+{
+	local repositoryFolderPath="$1"
+	shift 1
+
+	pushd "$repositoryFolderPath"
+	
+		"$@"
+	
+	popd
+}
+
+git_inRepositorySilently()
+{
+	local repositoryFolderPath="$1"
+	shift 1
+	
+	git_inRepository "$repositoryFolderPath" git_withOutputSilencedIfQuiet 2 "$@"
+}
+
+core_dependency_requires '*' git
+git_doesNotHaveTagPattern()
+{
+	local repositoryFolderPath="$1"
+	local tagName="$2"
+	
+	local tags="$(git_inRepository "$repositoryFolderPath" git tag --list "$tagName")"
+	
+	if [ -z "$tags" ]; then
+		return 0
+	else
+		return 1
+	fi
+}
+
+git_checkout()
+{
+	local repositoryFolderPath="$1"
+	shift 1
+	
+	git_inRepositorySilently "$repositoryFolderPath" checkout "$@"
+}
+
+git_push()
+{
+	local repositoryFolderPath="$1"
+	shift 1
+	
+	if core_variable_isSet _git_pushDryRun; then
+		if $_git_pushDryRun; then
+			core_message WARN "Dry run of git push $@"
+			return 0
+		fi
+	fi
+	
+	git_inRepositorySilently "$repositoryFolderPath" push "$@"
+}
+
+git_pull()
+{
+	local repositoryFolderPath="$1"
+	shift 1
+	
+	git_inRepositorySilently "$repositoryFolderPath" pull "$@"
+}
+
+git_commit()
+{
+	local repositoryFolderPath="$1"
+	shift 1
+	
+	git_inRepositorySilently "$repositoryFolderPath" commit "$@"
+}
+
+git_branch()
+{
+	local repositoryFolderPath="$1"
+	shift 1
+	
+	git_inRepositorySilently "$repositoryFolderPath" branch "$@"
+}
+
+core_dependency_requires '*' git
+git_mostRecentCommit()
+{
+	local repositoryFolderPath="$1"
+	
+	git_mostRecent "$repositoryFolderPath" '%H'
+}
+
+git_mostRecent()
+{
+	local repositoryFolderPath="$1"
+	local format="$2"
+	
+	git_inRepository "$repositoryFolderPath" git log -n 1 --format="format:$format"
+}
+
+core_dependency_requires '*' git
+git_commitToTagOrCommit()
+{
+	local repositoryFolderPath="$1"
+	local commit="$2"
+	
+	pushd "$repositoryFolderPath"
+		set +e
+		local tag="$(git describe --tags --exact-match "$commit" 2>/dev/null)"
+		set -e
+	popd
+	
+	if [ -n "$tag" ]; then
+		printf '%s' "$tag"
+	else
+		printf '%s' "$commit"
+	fi
+}
+
+git_clean()
+{
+	local repositoryFolderPath="$1"
+	local repositoryCommit="$2"
+	
+	git_inRepositorySilently "$repositoryFolderPath" clean -d -f -x
+	git_inRepositorySilently "$repositoryFolderPath" reset --hard "$repositoryCommit"
+}
+
+core_dependency_requires '*' git
+git_tag()
+{
+	local repositoryFolderPath="$1"
+	local tagName="$2"
+	local tagMessage="$3"
+	
+	if git_doesNotHaveTagPattern "$repositoryFolderPath" "$tagName"; then
+		
+		git_inRepository "$repositoryFolderPath" git tag -a -m "$tagMessage" "$tagName"
+		
+	fi
+	
+	git_push "$repositoryFolderPath" origin "$tagName"
+}
+
+git_tagUsingBaseName()
+{
+	local repositoryFolderPath="$1"
+	local tagBaseName="$2"
+	local tagMessage="$3"
+	
+	local tagName
+	local count=1
+	while true
+	do
+		tagName="$tagBaseName"-$count
+		if git_doesNotHaveTagPattern "$repositoryFolderPath" "$tagName"; then
+			break
+		fi
+		
+		count=$((count+1))
+	done
+	
+	git_tag "$repositoryFolderPath" "$tagName" "$tagMessage"
+	
+	_git_tagNameChosen="$tagName"
+}
+
+core_dependency_requires '*' git
+git_tagUpstream()
+{
+	local repositoryFolderPath="$1"
+
+	local upstreamTagName="upstream-$(git_mostRecent "$repositoryFolderPath" '%at-%H')"
+	local longCommitHash="$(git_mostRecentCommit "$repositoryFolderPath")"
+	local iso8601Date="$(git_mostRecent "$repositoryFolderPath" '%aI')"
+	local upstreamTagMessage="Imported from upstream at '$iso8601Date' from revision '$longCommitHash'"
+	
+	git_tag "$repositoryFolderPath" "$upstreamTagName" "$upstreamTagMessage"
+}
+
+core_dependency_requires '*' cat
+git_patchAm()
+{
+	local repositoryFolderPath="$1"
+	local patchFilePath="$2"
+
+	cat "$patchFilePath" | git_inRepositorySilently "$repositoryFolderPath" am --3way
+}
+
+git_addAll()
+{
+	local repositoryFolderPath="$1"
+	shift 1
+	
+	git_inRepository "$repositoryFolderPath" git add -A .
+}
+
+git_cherrypicks()
+{
+	local repositoryFolderPath="$1"
+	local rationale="$2"
+	shift 2
+	
+	git_inRepositorySilently "$repositoryFolderPath" cherry-pick --strategy=recursive -X theirs "$@"
+}
+
+git_addGitHubClone()
+{
+	local repositoryParentPath="$1"
+	local repositoryUser="$2"
+	local repositoryName="$3"
+
+	local repositoryFolderPath="$repositoryParentPath"/"$repositoryName"
+	
+	if [ -d "$repositoryFolderPath"/.git ]; then
+		return 0
+	fi
+	
+	if [ -f "$repositoryFolderPath"/.git ]; then
+		core_exitError $core_commandLine_exitCode_CANTCREAT "Submodule '$repositoryName' already exists as git submodule (not repository) in path '$repositoryParentPath'"
+	fi
+	
+	if [ -e "$repositoryFolderPath" ]; then
+		core_exitError $core_commandLine_exitCode_CANTCREAT "Submodule '$repositoryName' already exists as something in path '$repositoryParentPath'"
+	fi
+	
+	pushd "$repositoryParentPath"
+		
+		git_withOutputSilencedIfQuiet 2 clone git@github.com:"$repositoryUser"/"$repositoryName".git
+		
+	popd
+	
+	git_inRepositorySilently "$repositoryFolderPath" submodule update --init --recursive
+}
+
+git_addGitHubSubmodule()
+{
+	local repositoryParentPath="$1"
+	local repositoryUser="$2"
+	local repositoryName="$3"
+
+	local repositoryFolderPath="$repositoryParentPath"/"$repositoryName"
+	
+	if [ -f "$repositoryFolderPath"/.git ]; then
+		return 0
+	fi
+	
+	if [ -d "$repositoryFolderPath"/.git ]; then
+		core_exitError $core_commandLine_exitCode_CANTCREAT "Submodule '$repositoryName' already exists as git repository (not submodule) in path '$repositoryParentPath'"
+	fi
+	
+	if [ -e "$repositoryFolderPath" ]; then
+		core_exitError $core_commandLine_exitCode_CANTCREAT "Submodule '$repositoryName' already exists as something in path '$repositoryParentPath'"
+	fi
+	
+	pushd "$repositoryParentPath"
+		
+		git_withOutputSilencedIfQuiet 2 submodule add https://github.com/"$repositoryUser"/"$repositoryName".git
+		
+	popd
+	
+	git_inRepositorySilently "$repositoryFolderPath" submodule update --init --recursive
+}
+
+git_addGitHubClone()
+{
+	local repositoryParentPath="$1"
+	local repositoryUser="$2"
+	local repositoryName="$3"
+	
+	pushd "$repositoryParentPath"
+		
+		if [ -d "$repositoryName"/.git ]; then
+			return 0
+		fi
+		
+		if [ -f "$repositoryName"/.git ]; then
+			core_exitError $core_commandLine_exitCode_CANTCREAT "Clone '$repositoryName' already exists as git submodule (not submodule) in path '$repositoryParentPath'"
+		fi
+		
+		if [ -e "$repositoryName" ]; then
+			core_exitError $core_commandLine_exitCode_CANTCREAT "Clone '$repositoryName' already exists as something in path '$repositoryParentPath'"
+		fi
+		
+		git_withOutputSilencedIfQuiet 2 clone git@github.com:"$repositoryUser"/"$repositoryName".git
+		
+	popd
+}
+
+git_addGitHubInit()
+{
+	local repositoryParentPath="$1"
+	local repositoryUser="$2"
+	local repositoryName="$3"
+	
+	pushd "$repositoryParentPath"
+		
+		if [ -d "$repositoryName"/.git ]; then
+			git_addOriginRemoteIdempotently "$repositoryParentPath"/"$repositoryName" git@github.com:"$repositoryUser"/"$repositoryName".git
+			return 0
+		fi
+		
+		if [ -f "$repositoryName"/.git ]; then
+			core_exitError $core_commandLine_exitCode_CANTCREAT "Init '$repositoryName' already exists as git submodule (not submodule) in path '$repositoryParentPath'"
+		fi
+		
+		if [ -e "$repositoryName" ]; then
+			core_exitError $core_commandLine_exitCode_CANTCREAT "Init '$repositoryName' already exists as something in path '$repositoryParentPath'"
+		fi
+		
+		git_withOutputSilencedIfQuiet 2 init "$repositoryName"
+		
+	popd
+	
+	git_addOriginRemoteIdempotently "$repositoryParentPath"/"$repositoryName" git@github.com:"$repositoryUser"/"$repositoryName".git
+}
+
+core_dependency_requires '*' git
+git_addUpstreamRemoteIdempotently()
+{
+	local repositoryFolderPath="$1"
+	local upstreamRemote="$2"
+	
+	git_inRepository "$repositoryFolderPath" git remote add -f --tags upstream "$upstreamRemote" 1>/dev/null 2>/dev/null || git_fetchFromUpstreamRemote "$repositoryFolderPath"
+}
+
+core_dependency_requires '*' git
+git_addOriginRemoteIdempotently()
+{
+	local repositoryFolderPath="$1"
+	local originRemote="$2"
+	
+	git_inRepository "$repositoryFolderPath" git remote add -f --tags origin "$originRemote" 1>/dev/null 2>/dev/null || git_fetchFromOriginRemote "$repositoryFolderPath"
+}
+
+git_fetchFromUpstreamRemote()
+{
+	local repositoryFolderPath="$1"
+	
+	git_fetchFromRemote "$repositoryFolderPath" upstream
+}
+
+git_fetchFromOriginRemote()
+{
+	local repositoryFolderPath="$1"
+	
+	git_fetchFromRemote "$repositoryFolderPath" origin
+}
+
+git_fetchFromRemote()
+{
+	local repositoryFolderPath="$1"
+	local remote="$2"
+	
+	git_inRepositorySilently "$repositoryFolderPath" fetch "$remote"
+	
 }
