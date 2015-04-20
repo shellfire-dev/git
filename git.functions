@@ -374,16 +374,12 @@ git_fetchFromRemote()
 	
 }
 
+# http://stackoverflow.com/questions/2179722/checking-out-old-file-with-original-create-modified-timestamps/2179876#2179876 is more efficient (keeps a running list of already touch'd files)
 core_dependency_requires '*' git head touch
 git_changeTimestampsToLastCommit()
 {
 	local repositoryFolderPath="$1"
-
-	_git_getFileRevision()
-	{
-	    git rev-list -n 1 HEAD "$1"
-	}
-	
+		
 	pushd "$repositoryFolderPath"
 		
 		local submodule
@@ -396,16 +392,36 @@ git_changeTimestampsToLastCommit()
 			$(git submodule foreach -q 'echo "$path"')
 		EOF
 		
+		local firstLineOfRecord=true
+		local fileTime
+		
+		local column0
+		local column1
+		local column2
+		local column3
+		local column4
 		local file
-		while IFS= read -r file
+			
+		set --
+		
+		while IFS="$(printf '\t ')"
 		do
-			if [ -n "$file" ]; then
-				local fileTime="$(git show --pretty=format:%ai --abbrev-commit "$(_git_getFileRevision "$file")" | head -n 1)"
-				# requires GNU coreutils touch
-				touch -d "$fileTime" "$file"
+			if $firstLineOfRecord; then
+				read -r fileTime
+				firstLineOfRecord=false
+			else
+				read -r column0 column1 column2 column3 column4 file
+				if [ -z "$column0" ]; then
+					firstLineOfRecord=true
+					# Files may be missing, and touch may end up running many times
+					touch -d "$fileTime" "$@" 2>/dev/null || true
+					set --
+				else
+					set -- "$@" "$file"
+				fi
 			fi
 		done <<-EOF
-			$(git ls-files)
+			$(git whatchanged --reverse --format=format:%cI)
 		EOF
 		
 		git update-index -q --ignore-submodules --unmerged --ignore-missing --refresh
