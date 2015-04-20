@@ -389,7 +389,9 @@ git_changeTimestampsToLastCommit()
 		local submodule
 		while IFS= read -r submodule
 		do
-			git_changeTimestampsToLastCommit "$submodule"
+			if [ -n "$submodule" ]; then
+				git_changeTimestampsToLastCommit "$submodule"
+			fi
 		done <<-EOF
 			$(git submodule foreach -q 'echo "$path"')
 		EOF
@@ -397,9 +399,11 @@ git_changeTimestampsToLastCommit()
 		local file
 		while IFS= read -r file
 		do
-			local fileTime="$(git show --pretty=format:%ai --abbrev-commit "$(_git_getFileRevision "$file")" | head -n 1)"
-			# requires GNU coreutils touch
-			touch -d "$fileTime" "$file"
+			if [ -n "$file" ]; then
+				local fileTime="$(git show --pretty=format:%ai --abbrev-commit "$(_git_getFileRevision "$file")" | head -n 1)"
+				# requires GNU coreutils touch
+				touch -d "$fileTime" "$file"
+			fi
 		done <<-EOF
 			$(git ls-files)
 		EOF
