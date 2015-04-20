@@ -374,44 +374,10 @@ git_fetchFromRemote()
 	
 }
 
-# http://stackoverflow.com/questions/2179722/checking-out-old-file-with-original-create-modified-timestamps/2179876#2179876 is more efficient (keeps a running list of already touch'd files)
-
-core_dependency_requires '*' cat git awk touch env
+core_dependency_requires '*' cat git awk sed touch env
 git_changeTimestampsToLastCommit()
 {
 	local repositoryFolderPath="$1"
-	
-	if core_variable_isUnset _git_changeTimestampsToLastCommit_awkScript; then
-		local TMP_FILE
-		core_temporaryFiles_newFileToRemoveOnExit
-		local _git_changeTimestampsToLastCommit_awkScript="$TMP_FILE"
-		cat >"$_git_changeTimestampsToLastCommit_awkScript" <<'EOF'
-BEGIN {
-	FS="\n"
-	RS=""
-	ORS=""
-}
-{
-	timestamp=$1
-	
-	touch=""
-	n=2
-	while(n<=NF) {
-		if (files[$n] != 1) {
-			files[$n]=1
-			touch=touch " '" $n "'"
-		}
-		x++
-	}
-	
-	if (length(touch)>0) {
-		# awk system() call invokes the shell which is (a) a security risk (b) slow (happens each time) and (c) requires daemons to have a shell
-		# Instead we pass the output to sh, which means one invocation and execution happens as-we-go
-		print "touch -d '" timestamp "'" touch " 2>/dev/null" "\n"
-	}
-}
-EOF
-	fi
 		
 	pushd "$repositoryFolderPath"
 		
@@ -424,8 +390,48 @@ EOF
 		done <<-EOF
 			$(git submodule foreach -q 'echo "$path"')
 		EOF
-		
-		git whatchanged --reverse --format=format:%cI --name-only | awk -f "$_git_changeTimestampsToLastCommit_awkScript" | env sh -s
+
+	
+		local TMP_FILE
+		core_temporaryFiles_newFileToRemoveOnExit
+		local _git_changeTimestampsToLastCommit_awkScript="$TMP_FILE"
+		cat >"$_git_changeTimestampsToLastCommit_awkScript" <<EOF
+BEGIN {
+	FS="\n"
+	RS=""
+	ORS=""
+	filesCount=0
+	$(git ls-files | sed 's/^\(.*\)$/files["\1"]=1;filesCount++/')
+}
+EOF
+		cat >>"$_git_changeTimestampsToLastCommit_awkScript" <<'EOF'
+{
+	timestamp=$1
+
+	touch=""
+	n=2
+	while(n<=NF) {
+		if (files[$n] == 1) {
+			files[$n]=2
+			filesCount--
+			touch=touch " '" $n "'"
+		}
+		n++
+	}
+
+	if (length(touch)>0) {
+		# awk system() call invokes the shell which is (a) a security risk (b) slow (happens each time) and (c) requires daemons to have a shell
+		# Instead we pass the output to sh, which means one invocation and execution happens as-we-go
+		print "touch -d '" timestamp "'" touch " 2>/dev/null" " || true \n"
+	}
+
+	if(filesCount == 0)
+	{
+		exit 0
+	}
+}
+EOF
+		git whatchanged --format=format:%cI --name-only | awk -f "$_git_changeTimestampsToLastCommit_awkScript" - | env sh -s
 		
 	popd
 }
