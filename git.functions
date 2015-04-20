@@ -373,3 +373,38 @@ git_fetchFromRemote()
 	git_inRepositorySilently "$repositoryFolderPath" fetch "$remote"
 	
 }
+
+core_dependency_requires '*' git head touch
+git_changeTimestampsToLastCommit()
+{
+	local repositoryFolderPath="$1"
+
+	_git_getFileRevision()
+	{
+	    git rev-list -n 1 HEAD "$1"
+	}
+	
+	pushd "$repositoryFolderPath"
+		
+		local submodule
+		while IFS= read -r submodule
+		do
+			git_changeTimestampsToLastCommit "$submodule"
+		done <<-EOF
+			$(git submodule foreach -q 'echo "$path"')
+		EOF
+		
+		local file
+		while IFS= read -r file
+		do
+			local fileTime="$(git show --pretty=format:%ai --abbrev-commit "$(_git_getFileRevision "$file")" | head -n 1)"
+			# requires GNU coreutils touch
+			touch -d "$fileTime" "$file"
+		done <<-EOF
+			$(git ls-files)
+		EOF
+		
+		git update-index -q --ignore-submodules --unmerged --ignore-missing --refresh
+		
+	popd	
+}
