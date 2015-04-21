@@ -142,6 +142,20 @@ git_clean()
 	
 	git_inRepositorySilently "$repositoryFolderPath" clean -d -f -x
 	git_inRepositorySilently "$repositoryFolderPath" reset --hard "$repositoryCommit"
+		
+	pushd "$repositoryFolderPath"
+		
+		local submodule
+		while IFS= read -r submodule
+		do
+			if [ -n "$submodule" ]; then
+				git_clean "$submodule" HEAD
+			fi
+		done <<-EOF
+			$(git submodule foreach -q 'echo "$path"')
+		EOF
+		
+	popd
 }
 
 core_dependency_requires '*' git
