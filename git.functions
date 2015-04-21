@@ -235,11 +235,11 @@ git_addGitHubClone()
 	fi
 	
 	if [ -f "$repositoryFolderPath"/.git ]; then
-		core_exitError $core_commandLine_exitCode_CANTCREAT "Submodule '$repositoryName' already exists as git submodule (not repository) in path '$repositoryParentPath'"
+		core_exitError $core_commandLine_exitCode_CANTCREAT "Clone '$repositoryName' already exists as git submodule (not repository) in path '$repositoryParentPath'"
 	fi
 	
 	if [ -e "$repositoryFolderPath" ]; then
-		core_exitError $core_commandLine_exitCode_CANTCREAT "Submodule '$repositoryName' already exists as something in path '$repositoryParentPath'"
+		core_exitError $core_commandLine_exitCode_CANTCREAT "Clone '$repositoryName' already exists as something (not repository) in path '$repositoryParentPath'"
 	fi
 	
 	pushd "$repositoryParentPath"
@@ -268,7 +268,7 @@ git_addGitHubSubmodule()
 	fi
 	
 	if [ -e "$repositoryFolderPath" ]; then
-		core_exitError $core_commandLine_exitCode_CANTCREAT "Submodule '$repositoryName' already exists as something in path '$repositoryParentPath'"
+		core_exitError $core_commandLine_exitCode_CANTCREAT "Submodule '$repositoryName' already exists as something (not submodule) in path '$repositoryParentPath'"
 	fi
 	
 	pushd "$repositoryParentPath"
@@ -278,31 +278,6 @@ git_addGitHubSubmodule()
 	popd
 	
 	git_inRepositorySilently "$repositoryFolderPath" submodule update --init --recursive
-}
-
-git_addGitHubClone()
-{
-	local repositoryParentPath="$1"
-	local repositoryUser="$2"
-	local repositoryName="$3"
-	
-	pushd "$repositoryParentPath"
-		
-		if [ -d "$repositoryName"/.git ]; then
-			return 0
-		fi
-		
-		if [ -f "$repositoryName"/.git ]; then
-			core_exitError $core_commandLine_exitCode_CANTCREAT "Clone '$repositoryName' already exists as git submodule (not submodule) in path '$repositoryParentPath'"
-		fi
-		
-		if [ -e "$repositoryName" ]; then
-			core_exitError $core_commandLine_exitCode_CANTCREAT "Clone '$repositoryName' already exists as something in path '$repositoryParentPath'"
-		fi
-		
-		git_withOutputSilencedIfQuiet 2 clone git@github.com:"$repositoryUser"/"$repositoryName".git
-		
-	popd
 }
 
 git_addGitHubInit()
@@ -370,8 +345,31 @@ git_fetchFromRemote()
 	local repositoryFolderPath="$1"
 	local remote="$2"
 	
-	git_inRepositorySilently "$repositoryFolderPath" fetch "$remote"
+	git_inRepositorySilently "$repositoryFolderPath" fetch "$remote"	
+}
+
+core_dependency_requires '*' git
+git_removeAllLocalTags()
+{
+	local repositoryFolderPath="$1"
 	
+	pushd "$repositoryFolderPath"
+	
+		# Note, absence of quotes is correct
+		# 2>/dev/null because there is no -q option
+		git tag -d $(git tag) 2>/dev/null
+		
+		local remote
+		while IFS= read -r remote
+		do
+			if [ -n "$remote" ]; then
+				git fetch --tags "$remote"
+			fi
+		done <<-EOF
+			$(git remote)
+		EOF
+		
+	popd
 }
 
 core_dependency_requires '*' cat git awk sed touch env
