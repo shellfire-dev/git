@@ -236,7 +236,7 @@ git_cherrypicks()
 	git_inRepositorySilently "$repositoryFolderPath" cherry-pick --strategy=recursive -X theirs "$@"
 }
 
-git_addGitHubClone()
+git_addGitHubCloneOrFetchFromOriginRemote()
 {
 	local repositoryParentPath="$1"
 	local repositoryUser="$2"
@@ -245,6 +245,8 @@ git_addGitHubClone()
 	local repositoryFolderPath="$repositoryParentPath"/"$repositoryName"
 	
 	if [ -d "$repositoryFolderPath"/.git ]; then
+		git_inRepositorySilently "$repositoryFolderPath" submodule update --init --recursive
+		git_fetchFromOriginRemote "$repositoryFolderPath"
 		return 0
 	fi
 	
@@ -258,11 +260,9 @@ git_addGitHubClone()
 	
 	pushd "$repositoryParentPath"
 		
-		git_withOutputSilencedIfQuiet 2 clone git@github.com:"$repositoryUser"/"$repositoryName".git
+		git_withOutputSilencedIfQuiet 2 clone --recursive git@github.com:"$repositoryUser"/"$repositoryName".git
 		
 	popd
-	
-	git_inRepositorySilently "$repositoryFolderPath" submodule update --init --recursive
 }
 
 git_addGitHubSubmodule()
