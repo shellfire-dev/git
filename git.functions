@@ -242,7 +242,7 @@ git_addGitCloneOrFetchFromOriginRemote()
 	local cloneUrl="$2"
 	local folderName="$3"
 
-	local repositoryFolderPath="$repositoryParentPath"/"$repositoryName"
+	local repositoryFolderPath="$repositoryParentPath"/"$folderName"
 	
 	if [ -d "$repositoryFolderPath"/.git ]; then
 		git_inRepositorySilently "$repositoryFolderPath" submodule update --init --recursive
