@@ -240,6 +240,7 @@ git_addGitCloneOrFetchFromOriginRemote()
 {
 	local repositoryParentPath="$1"
 	local cloneUrl="$2"
+	local folderName="$3"
 
 	local repositoryFolderPath="$repositoryParentPath"/"$repositoryName"
 	
@@ -259,7 +260,7 @@ git_addGitCloneOrFetchFromOriginRemote()
 	
 	pushd "$repositoryParentPath"
 		
-		git_withOutputSilencedIfQuiet 2 clone --recursive "$cloneUrl"
+		git_withOutputSilencedIfQuiet 2 clone --recursive "$cloneUrl" "$folderName"
 		
 	popd
 }
