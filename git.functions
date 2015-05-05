@@ -236,7 +236,7 @@ git_cherrypicks()
 	git_inRepositorySilently "$repositoryFolderPath" cherry-pick --strategy=recursive -X theirs "$@"
 }
 
-git_addGitHubCloneOrFetchFromOriginRemote()
+git_addGitCloneOrFetchFromOriginRemote()
 {
 	local repositoryParentPath="$1"
 	local cloneUrl="$2"
