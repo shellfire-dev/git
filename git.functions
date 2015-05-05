@@ -239,8 +239,7 @@ git_cherrypicks()
 git_addGitHubCloneOrFetchFromOriginRemote()
 {
 	local repositoryParentPath="$1"
-	local repositoryUser="$2"
-	local repositoryName="$3"
+	local cloneUrl="$2"
 
 	local repositoryFolderPath="$repositoryParentPath"/"$repositoryName"
 	
@@ -260,7 +259,7 @@ git_addGitHubCloneOrFetchFromOriginRemote()
 	
 	pushd "$repositoryParentPath"
 		
-		git_withOutputSilencedIfQuiet 2 clone --recursive git@github.com:"$repositoryUser"/"$repositoryName".git
+		git_withOutputSilencedIfQuiet 2 clone --recursive "$cloneUrl"
 		
 	popd
 }
@@ -359,7 +358,7 @@ git_fetchFromRemote()
 	local repositoryFolderPath="$1"
 	local remote="$2"
 	
-	git_inRepositorySilently "$repositoryFolderPath" fetch "$remote"	
+	git_inRepositorySilently "$repositoryFolderPath" fetch --tags "$remote"	
 }
 
 core_dependency_requires '*' git
