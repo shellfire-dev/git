@@ -218,10 +218,10 @@ git_localModificationHashOrEmptyString()
 	local hashSum
 	local notWanted
 	read -r hashSum notWanted <<-EOF
-		$(git_inRepository "$repositoryFolderPath" diff --minimal --no-color | md5sum)
+		$(git_inRepository "$repositoryFolderPath" git diff --minimal --no-color | md5sum)
 	EOF
 	
-	local emptyStringHash='da89c63b0ea43b06a5bc547d66a13b75'
+	local emptyStringHash='d41d8cd98f00b204e9800998ecf8427e'
 	if [ "$hashSum" = "$emptyStringHash" ]; then
 		printf ''
 	else
