@@ -8,7 +8,7 @@ This module provides a simple set of wrapper functions for making it more pleasa
 
 ## Overview
 
-Usage couldn't be simpler. Just pick a function.
+Usage couldn't be simpler. Just pick a function. Please note that most functions are not currently documented.
 
 ## Importing
 

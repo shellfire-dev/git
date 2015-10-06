@@ -53,6 +53,59 @@ git_doesNotHaveTagPattern()
 	fi
 }
 
+core_dependency_requires '*' git
+git_isPathSomewhereInsideGitRepository()
+{
+	local repositoryFolderPath="$1"
+	
+	pushd "$repositoryFolderPath"
+		
+		set +e
+		git log -n 0 2>/dev/null
+		local exitCode=$?
+		set -e
+		
+	popd
+	
+	return $exitCode
+}
+
+# If in a submodule, walks up the directory hierarchy to the '.git' folder
+# If no repository found, returns ''
+git_findAbsolutePathOfTopLevelOfRepository()
+{
+	local repositoryFolderPath="$1"
+	
+	pushd "$repositoryFolderPath"
+	
+		local currentFolderPath="$(pwd)"
+	
+	popd
+	
+	while [ ! core_path_isReadableAndSearchableFolderPath "$currentFolderPath"/.git ]; then
+	do
+		if [ "$currentFolderPath" = '/' ]; then
+			printf ''
+			return 0
+		fi
+		
+		pushd "$currentFolderPath"/..
+			currentFolderPath="$(pwd)"
+		popd
+	done
+	
+	printf '%s' "$currentFolderPath"
+}
+
+core_dependency_requires '*' grep
+git_hasRemote()
+{
+	local repositoryFolderPath="$1"
+	local remoteName="$2"
+	
+	git_inRepository "$repositoryFolderPath" remote | grep -q '^'"$remoteName"'$'
+}
+
 git_checkout()
 {
 	local repositoryFolderPath="$1"
