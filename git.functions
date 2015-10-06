@@ -82,7 +82,7 @@ git_findAbsolutePathOfTopLevelOfRepository()
 	
 	popd
 	
-	while [ ! core_path_isReadableAndSearchableFolderPath "$currentFolderPath"/.git ]; then
+	while [ ! core_path_isReadableAndSearchableFolderPath "$currentFolderPath"/.git ]
 	do
 		if [ "$currentFolderPath" = '/' ]; then
 			printf ''
