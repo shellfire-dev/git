@@ -103,7 +103,7 @@ git_hasRemote()
 	local repositoryFolderPath="$1"
 	local remoteName="$2"
 	
-	git_inRepository "$repositoryFolderPath" remote | grep -q '^'"$remoteName"'$'
+	git_inRepository "$repositoryFolderPath" git remote | grep -q '^'"$remoteName"'$'
 }
 
 git_checkout()
