@@ -199,13 +199,14 @@ git_clean()
 	pushd "$repositoryFolderPath"
 		
 		local submodule
-		while IFS= read -r submodule
+		local sha1
+		while IFS= read -r submodule sha1
 		do
 			if [ -n "$submodule" ]; then
-				git_clean "$submodule" HEAD
+				git_clean "$submodule" "$sha1"
 			fi
 		done <<-EOF
-			$(git submodule foreach -q 'echo "$path"')
+			$(git submodule foreach --quiet 'echo "$path" "$sha1"')
 		EOF
 		
 	popd
