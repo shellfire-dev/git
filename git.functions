@@ -188,6 +188,18 @@ git_commitToTagOrCommit()
 	fi
 }
 
+git_cleanIfGitPresent()
+{
+	local repositoryFolderPath="$1"
+	local repositoryCommit="$2"
+	
+	if core_compatibility_whichNoOutput git; then
+		if git_isPathSomewhereInsideGitRepository "$repositoryFolderPath"; then
+			git_clean "$repositoryFolderPath" "$repositoryCommit"
+		fi
+	fi
+}
+
 git_clean()
 {
 	local repositoryFolderPath="$1"
